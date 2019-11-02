@@ -2,10 +2,9 @@
 
 class radonusfft
 {
-  size_t N;
-  size_t Ntheta;
-  size_t Nz;
-  size_t M;
+  bool is_free = false;
+
+  size_t m;
   float mu;
 
   float2 *f;
@@ -22,16 +21,21 @@ class radonusfft
   float2 *fde;
   float2 *fdee;
 
-
   cufftHandle plan2dfwd;
   cufftHandle plan2dadj;
 
   cufftHandle plan1d;
+  float2 *shiftfwd;
+  float2 *shiftadj;
 
 public:
-  radonusfft(size_t Ntheta, size_t Nz, size_t N);
+  size_t n;
+  size_t ntheta;
+  size_t pnz;
+  float center;
+  radonusfft(size_t ntheta, size_t pnz, size_t n, float center, size_t theta_);
   ~radonusfft();
   void fwd(size_t g, size_t f);
   void adj(size_t f, size_t g);
-  void setobj(size_t theta);
+  void free();
 };
