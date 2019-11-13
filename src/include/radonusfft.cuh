@@ -1,3 +1,6 @@
+#ifndef RADONUSFFT_CUH
+#define RADONUSFFT_CUH
+
 #include <cufft.h>
 
 class radonusfft
@@ -39,3 +42,5 @@ public:
   void adj(size_t f, size_t g);
   void free();
 };
+
+#endif
