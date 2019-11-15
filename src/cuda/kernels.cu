@@ -1,34 +1,33 @@
 #define PI 3.1415926535
 
-void __global__ divphi(float2 *g, float2 *f, float mu, int N, int Nz) {
-  int tx = blockDim.x * blockIdx.x + threadIdx.x;
-  int ty = blockDim.y * blockIdx.y + threadIdx.y;
-  int tz = blockDim.z * blockIdx.z + threadIdx.z;
-
-  if (tx >= N || ty >= N || tz >= Nz)
-    return;
-  float phi = __expf(-mu * (tx - N / 2) * (tx - N / 2) -
-                     mu * (ty - N / 2) * (ty - N / 2));
-  g[tx + N / 2 + (ty + N / 2) * 2 * N + tz * 4 * N * N].x =
-      f[tx + ty * N + tz * N * N].x / phi / (4 * N * N);
-  g[tx + N / 2 + (ty + N / 2) * 2 * N + tz * 4 * N * N].y =
-      f[tx + ty * N + tz * N * N].y / phi / (4 * N * N);
-}
-
-void __global__ unpaddivphi(float2 *f, float2 *g, float mu, int N, int Nz) {
+// Divide by phi
+void __global__ divphi(float2 *g, float2 *f, float mu, int N, int Nz, dir direction) {
   int tx = blockDim.x * blockIdx.x + threadIdx.x;
   int ty = blockDim.y * blockIdx.y + threadIdx.y;
   int tz = blockDim.z * blockIdx.z + threadIdx.z;
   if (tx >= N || ty >= N || tz >= Nz)
     return;
-  float phi = __expf(-mu * (tx - N / 2) * (tx - N / 2) -
-                     mu * (ty - N / 2) * (ty - N / 2));
-  f[tx + ty * N + tz * N * N].x =
-      g[tx + N / 2 + (ty + N / 2) * 2 * N + tz * 4 * N * N].x / phi /
-      (4 * N * N);
-  f[tx + ty * N + tz * N * N].y =
-      g[tx + N / 2 + (ty + N / 2) * 2 * N + tz * 4 * N * N].y / phi /
-      (4 * N * N);
+  float phi = __expf(
+    -mu * (tx - N / 2) * (tx - N / 2)
+    -mu * (ty - N / 2) * (ty - N / 2)
+  );
+  int f_ind = (
+    + tx
+    + ty * N
+    + tz * N * N
+  );
+  int g_ind = (
+    + (tx + N / 2)
+    + (ty + N / 2) * 2 * N
+    + tz * 4 * N * N
+  );
+  if (direction == TOMO_FWD){
+    g[g_ind].x = f[f_ind].x / phi / (4 * N * N);
+    g[g_ind].y = f[f_ind].y / phi / (4 * N * N);
+  } else {
+    f[f_ind].x = g[g_ind].x / phi / (4 * N * N);
+    f[f_ind].y = g[g_ind].y / phi / (4 * N * N);
+  }
 }
 
 void __global__ circ(float2 *f, float r, int N, int Nz) {

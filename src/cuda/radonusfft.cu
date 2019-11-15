@@ -97,7 +97,7 @@ void radonusfft::fwd(size_t g_, size_t f_) {
   circ <<<GS3d0, BS3d>>> (f, 1.0f / n, n, pnz);
   takexy <<<GS2d0, BS2d>>> (x, y, theta, n, ntheta);
 
-  divphi <<<GS3d0, BS3d>>> (fde, f, mu, n, pnz);
+  divphi <<<GS3d0, BS3d>>> (fde, f, mu, n, pnz, TOMO_FWD);
   fftshiftc <<<GS3d1, BS3d>>> (fde, 2 * n, pnz);
   cufftExecC2C(plan2dfwd, (cufftComplex *)fde,
                (cufftComplex *)&fdee[m + m * (2 * n + 2 * m)], CUFFT_FORWARD);
@@ -153,7 +153,7 @@ void radonusfft::adj(size_t f_, size_t g_) {
                (cufftComplex *)fde, CUFFT_INVERSE);
   fftshiftc <<<GS3d1, BS3d>>> (fde, 2 * n, pnz);
 
-  unpaddivphi <<<GS3d0, BS3d>>> (f, fde, mu, n, pnz);
+  divphi <<<GS3d0, BS3d>>> (fde, f, mu, n, pnz, TOMO_ADJ);
   circ <<<GS3d0, BS3d>>> (f, 1.0f / n, n, pnz);
 
   cudaMemcpy((float2 *)f_, f, n * n * pnz * sizeof(float2), cudaMemcpyDefault);
