@@ -1,4 +1,4 @@
-void __global__ fftshift1c(float2 *f, int N, int Ntheta, int Nz) {
+void __global__ ifftshiftc(float2 *f, int N, int Ntheta, int Nz) {
   int tx = blockDim.x * blockIdx.x + threadIdx.x;
   int ty = blockDim.y * blockIdx.y + threadIdx.y;
   int tz = blockDim.z * blockIdx.z + threadIdx.z;

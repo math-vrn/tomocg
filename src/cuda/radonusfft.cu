@@ -108,9 +108,9 @@ void radonusfft::fwd(size_t g_, size_t f_) {
   // shift with respect to given center
   shift <<<GS3d3, BS3d>>> (g, shiftfwd, n, ntheta, pnz);
 
-  fftshift1c <<<GS3d3, BS3d>>> (g, n, ntheta, pnz);
+  ifftshiftc <<<GS3d3, BS3d>>> (g, n, ntheta, pnz);
   cufftExecC2C(plan1d, (cufftComplex *)g, (cufftComplex *)g, CUFFT_INVERSE);
-  fftshift1c <<<GS3d3, BS3d>>> (g, n, ntheta, pnz);
+  ifftshiftc <<<GS3d3, BS3d>>> (g, n, ntheta, pnz);
 
   cudaMemcpy((float2 *)g_, g, n * ntheta * pnz * sizeof(float2),
              cudaMemcpyDefault);
@@ -138,9 +138,9 @@ void radonusfft::adj(size_t f_, size_t g_) {
 
   takexy <<<GS2d0, BS2d>>> (x, y, theta, n, ntheta);
 
-  fftshift1c <<<GS3d3, BS3d>>> (g, n, ntheta, pnz);
+  ifftshiftc <<<GS3d3, BS3d>>> (g, n, ntheta, pnz);
   cufftExecC2C(plan1d, (cufftComplex *)g, (cufftComplex *)g, CUFFT_FORWARD);
-  fftshift1c <<<GS3d3, BS3d>>> (g, n, ntheta, pnz);
+  ifftshiftc <<<GS3d3, BS3d>>> (g, n, ntheta, pnz);
   // applyfilter<<<GS3d3, BS3d>>>(g,n,ntheta,pnz);
   // shift with respect to given center
   shift <<<GS3d3, BS3d>>> (g, shiftadj, n, ntheta, pnz);
