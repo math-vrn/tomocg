@@ -59,7 +59,7 @@ void __global__ takexy(float *x, float *y, float *theta, int N, int Ntheta) {
     y[tx + ty * N] = 0.5f - 1e-5;
 }
 
-void __global__ wrap(float2 *f, int N, int Nz, int M) {
+void __global__ wrap(float2 *f, int N, int Nz, int M, dir direction) {
   int tx = blockDim.x * blockIdx.x + threadIdx.x;
   int ty = blockDim.y * blockIdx.y + threadIdx.y;
   int tz = blockDim.z * blockIdx.z + threadIdx.z;
@@ -68,30 +68,24 @@ void __global__ wrap(float2 *f, int N, int Nz, int M) {
   if (tx < M || tx >= 2 * N + M || ty < M || ty >= 2 * N + M) {
     int tx0 = (tx - M + 2 * N) % (2 * N);
     int ty0 = (ty - M + 2 * N) % (2 * N);
-    int id1 =
-        tx + ty * (2 * N + 2 * M) + tz * (2 * N + 2 * M) * (2 * N + 2 * M);
-    int id2 = tx0 + M + (ty0 + M) * (2 * N + 2 * M) +
-              tz * (2 * N + 2 * M) * (2 * N + 2 * M);
-    f[id1].x = f[id2].x;
-    f[id1].y = f[id2].y;
-  }
-}
-
-void __global__ wrapadj(float2 *f, int N, int Nz, int M) {
-  int tx = blockDim.x * blockIdx.x + threadIdx.x;
-  int ty = blockDim.y * blockIdx.y + threadIdx.y;
-  int tz = blockDim.z * blockIdx.z + threadIdx.z;
-  if (tx >= 2 * N + 2 * M || ty >= 2 * N + 2 * M || tz >= Nz)
-    return;
-  if (tx < M || tx >= 2 * N + M || ty < M || ty >= 2 * N + M) {
-    int tx0 = (tx - M + 2 * N) % (2 * N);
-    int ty0 = (ty - M + 2 * N) % (2 * N);
-    int id1 =
-        tx + ty * (2 * N + 2 * M) + tz * (2 * N + 2 * M) * (2 * N + 2 * M);
-    int id2 = tx0 + M + (ty0 + M) * (2 * N + 2 * M) +
-              tz * (2 * N + 2 * M) * (2 * N + 2 * M);
-    atomicAdd(&f[id2].x, f[id1].x);
-    atomicAdd(&f[id2].y, f[id1].y);
+    int id1 = (
+      + tx
+      + ty * (2 * N + 2 * M)
+      + tz * (2 * N + 2 * M) * (2 * N + 2 * M)
+    );
+    int id2 = (
+      + tx0
+      + M
+      + (ty0 + M) * (2 * N + 2 * M)
+      + tz * (2 * N + 2 * M) * (2 * N + 2 * M)
+    );
+    if (direction == TOMO_FWD) {
+      f[id1].x = f[id2].x;
+      f[id1].y = f[id2].y;
+    } else {
+      atomicAdd(&f[id2].x, f[id1].x);
+      atomicAdd(&f[id2].y, f[id1].y);
+    }
   }
 }
 

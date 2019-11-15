@@ -103,7 +103,7 @@ void radonusfft::fwd(size_t g_, size_t f_) {
                (cufftComplex *)&fdee[m + m * (2 * n + 2 * m)], CUFFT_FORWARD);
   fftshiftc <<<GS3d2, BS3d>>> (fdee, 2 * n + 2 * m, pnz);
 
-  wrap <<<GS3d2, BS3d>>> (fdee, n, pnz, m);
+  wrap <<<GS3d2, BS3d>>> (fdee, n, pnz, m, TOMO_FWD);
   gather <<<GS3d3, BS3d>>> (g, fdee, x, y, m, mu, n, ntheta, pnz);
   // shift with respect to given center
   shift <<<GS3d3, BS3d>>> (g, shiftfwd, n, ntheta, pnz);
@@ -146,7 +146,7 @@ void radonusfft::adj(size_t f_, size_t g_) {
   shift <<<GS3d3, BS3d>>> (g, shiftadj, n, ntheta, pnz);
 
   scatter <<<GS3d3, BS3d>>> (fdee, g, x, y, m, mu, n, ntheta, pnz);
-  wrapadj <<<GS3d2, BS3d>>> (fdee, n, pnz, m);
+  wrap <<<GS3d2, BS3d>>> (fdee, n, pnz, m, TOMO_ADJ);
 
   fftshiftc <<<GS3d2, BS3d>>> (fdee, 2 * n + 2 * m, pnz);
   cufftExecC2C(plan2dadj, (cufftComplex *)&fdee[m + m * (2 * n + 2 * m)],

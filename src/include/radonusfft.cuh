@@ -3,6 +3,8 @@
 
 #include <cufft.h>
 
+enum dir { TOMO_FWD, TOMO_ADJ };
+
 class radonusfft
 {
   bool is_free = false;
