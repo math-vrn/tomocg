@@ -104,7 +104,7 @@ void radonusfft::fwd(size_t g_, size_t f_) {
   fftshiftc <<<GS3d2, BS3d>>> (fdee, 2 * n + 2 * m, pnz);
 
   wrap <<<GS3d2, BS3d>>> (fdee, n, pnz, m, TOMO_FWD);
-  gather <<<GS3d3, BS3d>>> (g, fdee, x, y, m, mu, n, ntheta, pnz);
+  gather <<<GS3d3, BS3d>>> (g, fdee, x, y, m, mu, n, ntheta, pnz, TOMO_FWD);
   // shift with respect to given center
   shift <<<GS3d3, BS3d>>> (g, shiftfwd, n, ntheta, pnz);
 
@@ -145,7 +145,7 @@ void radonusfft::adj(size_t f_, size_t g_) {
   // shift with respect to given center
   shift <<<GS3d3, BS3d>>> (g, shiftadj, n, ntheta, pnz);
 
-  scatter <<<GS3d3, BS3d>>> (fdee, g, x, y, m, mu, n, ntheta, pnz);
+  gather <<<GS3d3, BS3d>>> (g, fdee, x, y, m, mu, n, ntheta, pnz, TOMO_ADJ);
   wrap <<<GS3d2, BS3d>>> (fdee, n, pnz, m, TOMO_ADJ);
 
   fftshiftc <<<GS3d2, BS3d>>> (fdee, 2 * n + 2 * m, pnz);
