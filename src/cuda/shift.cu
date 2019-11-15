@@ -5,8 +5,9 @@ void __global__ ifftshiftc(float2 *f, int N, int Ntheta, int Nz) {
   if (tx >= N || ty >= Ntheta || tz >= Nz)
     return;
   int g = (1 - 2 * ((tx + 1) % 2));
-  f[tx + tz * N + ty * N * Nz].x *= g;
-  f[tx + tz * N + ty * N * Nz].y *= g;
+  int f_ind = tx + tz * N + ty * N * Nz;
+  f[f_ind].x *= g;
+  f[f_ind].y *= g;
 }
 
 void __global__ fftshiftc(float2 *f, int N, int Nz) {
@@ -36,9 +37,10 @@ void __global__ shift(float2 *f, float2 *shift, int N, int Ntheta, int Nz) {
     return;
   float cr = shift[tx].x;
   float ci = shift[tx].y;
+  int f_ind = tx + tz * N + ty * N * Nz;
   float2 f0;
-  f0.x = f[tx + tz * N + ty * N * Nz].x;
-  f0.y = f[tx + tz * N + ty * N * Nz].y;
-  f[tx + tz * N + ty * N * Nz].x = f0.x * cr - f0.y * ci;
-  f[tx + tz * N + ty * N * Nz].y = f0.x * ci + f0.y * cr;
+  f0.x = f[f_ind].x;
+  f0.y = f[f_ind].y;
+  f[f_ind].x = f0.x * cr - f0.y * ci;
+  f[f_ind].y = f0.x * ci + f0.y * cr;
 }
