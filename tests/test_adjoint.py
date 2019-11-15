@@ -28,5 +28,9 @@ if __name__ == "__main__":
         data = slv.fwd_tomo_batch(u0)
         # adjoint test
         u1 = slv.adj_tomo_batch(data)
-        print('Adjoint test: ', np.sum(data*np.conj(data)),
-              '=?', np.sum(u0*np.conj(u1)))
+
+        t1 = np.sum(data*np.conj(data))
+        t2 = np.sum(u0*np.conj(u1))
+        print(f"Adjoint test: {t1.real:06f}{t1.imag:+06f}j "
+              f"=? {t2.real:06f}{t2.imag:+06f}j")
+        np.testing.assert_allclose(t1, t2, atol=1e-6)
