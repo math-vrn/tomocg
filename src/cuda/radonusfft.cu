@@ -53,6 +53,19 @@ radonusfft::radonusfft(size_t ntheta, size_t pnz, size_t n, float center,
   // compute shifts with respect to the rotation center
   takeshift <<<ceil(n / 1024.0), 1024>>> (shiftfwd, -(center - n / 2.0), n);
   takeshift <<<ceil(n / 1024.0), 1024>>> (shiftadj, (center - n / 2.0), n);
+
+  BS2d = dim3(32, 32);
+  BS3d = dim3(32, 32, 1);
+
+  GS2d0 = dim3(ceil(n / (float)BS2d.x), ceil(ntheta / (float)BS2d.y));
+  GS3d0 = dim3(ceil(n / (float)BS3d.x), ceil(n / (float)BS3d.y),
+               ceil(pnz / (float)BS3d.z));
+  GS3d1 = dim3(ceil(2 * n / (float)BS3d.x), ceil(2 * n / (float)BS3d.y),
+               ceil(pnz / (float)BS3d.z));
+  GS3d2 = dim3(ceil((2 * n + 2 * m) / (float)BS3d.x),
+               ceil((2 * n + 2 * m) / (float)BS3d.y), ceil(pnz / (float)BS3d.z));
+  GS3d3 = dim3(ceil(n / (float)BS3d.x), ceil(ntheta / (float)BS3d.y),
+               ceil(pnz / (float)BS3d.z));
 }
 
 // destructor, memory deallocation
@@ -76,21 +89,7 @@ void radonusfft::free() {
 }
 
 void radonusfft::fwd(size_t g_, size_t f_) {
-  dim3 BS2d(32, 32);
-  dim3 BS3d(32, 32, 1);
-
-  dim3 GS2d0(ceil(n / (float)BS2d.x), ceil(ntheta / (float)BS2d.y));
-  dim3 GS3d0(ceil(n / (float)BS3d.x), ceil(n / (float)BS3d.y),
-             ceil(pnz / (float)BS3d.z));
-  dim3 GS3d1(ceil(2 * n / (float)BS3d.x), ceil(2 * n / (float)BS3d.y),
-             ceil(pnz / (float)BS3d.z));
-  dim3 GS3d2(ceil((2 * n + 2 * m) / (float)BS3d.x),
-             ceil((2 * n + 2 * m) / (float)BS3d.y), ceil(pnz / (float)BS3d.z));
-  dim3 GS3d3(ceil(n / (float)BS3d.x), ceil(ntheta / (float)BS3d.y),
-             ceil(pnz / (float)BS3d.z));
-
   cudaMemcpy(f, (float2 *)f_, n * n * pnz * sizeof(float2), cudaMemcpyDefault);
-
   cudaMemset(fde, 0, 2 * n * 2 * n * pnz * sizeof(float2));
   cudaMemset(fdee, 0, (2 * n + 2 * m) * (2 * n + 2 * m) * pnz * sizeof(float2));
 
@@ -117,22 +116,8 @@ void radonusfft::fwd(size_t g_, size_t f_) {
 }
 
 void radonusfft::adj(size_t f_, size_t g_) {
-  dim3 BS2d(32, 32);
-  dim3 BS3d(32, 32, 1);
-
-  dim3 GS2d0(ceil(n / (float)BS2d.x), ceil(ntheta / (float)BS2d.y));
-  dim3 GS3d0(ceil(n / (float)BS3d.x), ceil(n / (float)BS3d.y),
-             ceil(pnz / (float)BS3d.z));
-  dim3 GS3d1(ceil(2 * n / (float)BS3d.x), ceil(2 * n / (float)BS3d.y),
-             ceil(pnz / (float)BS3d.z));
-  dim3 GS3d2(ceil((2 * n + 2 * m) / (float)BS3d.x),
-             ceil((2 * n + 2 * m) / (float)BS3d.y), ceil(pnz / (float)BS3d.z));
-  dim3 GS3d3(ceil(n / (float)BS3d.x), ceil(ntheta / (float)BS3d.y),
-             ceil(pnz / (float)BS3d.z));
-
   cudaMemcpy(g, (float2 *)g_, n * ntheta * pnz * sizeof(float2),
              cudaMemcpyDefault);
-
   cudaMemset(fde, 0, (2 * n + 2 * m) * (2 * n + 2 * m) * pnz * sizeof(float2));
   cudaMemset(fdee, 0, (2 * n + 2 * m) * (2 * n + 2 * m) * pnz * sizeof(float2));
 

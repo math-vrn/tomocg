@@ -33,6 +33,8 @@ class radonusfft
   float2 *shiftfwd;
   float2 *shiftadj;
 
+  dim3 BS2d, BS3d, GS2d0, GS3d0, GS3d1, GS3d2, GS3d3;
+
 public:
   size_t n;
   size_t ntheta;
