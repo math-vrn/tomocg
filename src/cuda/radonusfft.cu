@@ -141,5 +141,6 @@ void radonusfft::adj(size_t f_, size_t g_) {
   divphi <<<GS3d0, BS3d>>> (fde, f, mu, n, pnz, TOMO_ADJ);
   circ <<<GS3d0, BS3d>>> (f, 1.0f / n, n, pnz);
 
-  cudaMemcpy((float2 *)f_, f, n * n * pnz * sizeof(float2), cudaMemcpyDefault);
+  cudaMemcpy((float2 *)f_, f, n * n * pnz * sizeof(float2),
+             cudaMemcpyDefault);
 }

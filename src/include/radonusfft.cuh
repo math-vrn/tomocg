@@ -3,10 +3,12 @@
 
 #include <cufft.h>
 
-enum dir { TOMO_FWD, TOMO_ADJ };
+enum dir {
+  TOMO_FWD,
+  TOMO_ADJ
+};
 
-class radonusfft
-{
+class radonusfft {
   bool is_free = false;
 
   size_t m;
@@ -36,10 +38,10 @@ class radonusfft
   dim3 BS2d, BS3d, GS2d0, GS3d0, GS3d1, GS3d2, GS3d3;
 
 public:
-  size_t n;
-  size_t ntheta;
-  size_t pnz;
-  float center;
+  size_t n;      // width of square slices
+  size_t ntheta; // number of angles
+  size_t pnz;    // number of slices
+  float center;  // location of the rotation center
   radonusfft(size_t ntheta, size_t pnz, size_t n, float center, size_t theta_);
   ~radonusfft();
   void fwd(size_t g, size_t f);
