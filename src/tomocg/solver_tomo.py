@@ -153,8 +153,8 @@ class SolverTomo(radonusfft):
             u[ids] = u_gpu.get()
         return u
 
-    # Conjugate gradients tomography (for all slices)
-    def cg_tomo_batch2(self, xi0, u, titer):
+    # Conjugate gradients tomography (for all slices by batching fwd and adj operators)
+    def cg_tomo_batch_all(self, xi0, u, titer):
         """CG solver for ||Ru-xi0||_2"""
         # minimization functional
         def minf(Ru):
