@@ -28,9 +28,27 @@ if __name__ == "__main__":
         data = slv.fwd_tomo_batch(u0)
         # adjoint test
         u1 = slv.adj_tomo_batch(data)
+        
+        t1 = np.sum(data*np.conj(data))
+        t2 = np.sum(u0*np.conj(u1))
+        t3 = np.sum(u1*np.conj(u1))/ntheta/n
+        print(f"Adjoint test: {t1.real:06f}{t1.imag:+06f}j "
+              f"=? {t2.real:06f}{t2.imag:+06f}j")
+        print(f"Normalization test: {t2.real:06f}{t2.imag:+06f}j "
+              f"=? {t3.real:06f}{t3.imag:+06f}j")              
+                     
+        np.testing.assert_allclose(t1, t2, atol=1e-6)
+        
+        data = slv.fwd_reg(u0)
+        # adjoint test
+        u1 = slv.adj_reg(data)
 
         t1 = np.sum(data*np.conj(data))
         t2 = np.sum(u0*np.conj(u1))
+        t3 = np.sum(u1*np.conj(u1))/2
         print(f"Adjoint test: {t1.real:06f}{t1.imag:+06f}j "
               f"=? {t2.real:06f}{t2.imag:+06f}j")
+        print(f"Normalization test: {t2.real:06f}{t2.imag:+06f}j "
+              f"=? {t3.real:06f}{t3.imag:+06f}j")              
         np.testing.assert_allclose(t1, t2, atol=1e-6)
+        

@@ -23,8 +23,8 @@ if __name__ == "__main__":
         # generate data
         data = slv.fwd_tomo_batch(u0)        
         # initial guess
-        u = np.zeros([nz,n,n],dtype='complex64')
-        u = slv.cg_tomo_batch(data,u,64)
+        u = np.zeros([nz,n,n],dtype='complex64')                    
+        u = slv.cg_tomo_batch(data,u,64,dbg=True)
         #save results
         dxchange.write_tiff(u.imag,  'rec/beta', overwrite=True)
         dxchange.write_tiff(u.real,  'rec/delta', overwrite=True)

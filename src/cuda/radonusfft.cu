@@ -7,7 +7,7 @@
 radonusfft::radonusfft(size_t ntheta, size_t pnz, size_t n, float center,
                        size_t theta_)
     : ntheta(ntheta), pnz(pnz), n(n), center(center) {
-  float eps = 1e-3;
+  float eps = 1e-5;
   mu = -log(eps) / (2 * n * n);
   m = ceil(2 * n * 1 / PI * sqrt(-mu * log(eps) + (mu * n) * (mu * n) / 4));
   cudaMalloc((void **)&f, n * n * pnz * sizeof(float2));
@@ -93,7 +93,7 @@ void radonusfft::fwd(size_t g_, size_t f_) {
   cudaMemset(fde, 0, 2 * n * 2 * n * pnz * sizeof(float2));
   cudaMemset(fdee, 0, (2 * n + 2 * m) * (2 * n + 2 * m) * pnz * sizeof(float2));
 
-  circ <<<GS3d0, BS3d>>> (f, 1.0f / n, n, pnz);
+  // circ <<<GS3d0, BS3d>>> (f, 1.0f / n, n, pnz);
   takexy <<<GS2d0, BS2d>>> (x, y, theta, n, ntheta);
 
   divphi <<<GS3d0, BS3d>>> (fde, f, mu, n, pnz, TOMO_FWD);
@@ -139,7 +139,7 @@ void radonusfft::adj(size_t f_, size_t g_) {
   fftshiftc <<<GS3d1, BS3d>>> (fde, 2 * n, pnz);
 
   divphi <<<GS3d0, BS3d>>> (fde, f, mu, n, pnz, TOMO_ADJ);
-  circ <<<GS3d0, BS3d>>> (f, 1.0f / n, n, pnz);
+  // circ <<<GS3d0, BS3d>>> (f, 1.0f / n, n, pnz);
 
   cudaMemcpy((float2 *)f_, f, n * n * pnz * sizeof(float2),
              cudaMemcpyDefault);
