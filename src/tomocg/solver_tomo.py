@@ -58,8 +58,9 @@ class SolverTomo(radonusfft):
     def fwd_tomo_batch(self, u):
         """Batch of Tomography transform (R)"""
         res = np.zeros([self.ntheta, self.nz, self.n], dtype='complex64')
+
         for k in range(0, self.nz//self.pnz):
-            ids = np.arange(k*self.pnz, (k+1)*self.pnz)
+            ids = np.arange(k*self.pnz, (k+1)*self.pnz)           
             # copy data part to gpu
             u_gpu = cp.array(u[ids])
             # Radon transform

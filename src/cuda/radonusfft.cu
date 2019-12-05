@@ -7,7 +7,7 @@
 radonusfft::radonusfft(size_t ntheta, size_t pnz, size_t n, float center,
                        size_t theta_)
     : ntheta(ntheta), pnz(pnz), n(n), center(center) {
-  float eps = 1e-5;
+  float eps = 1e-3;
   mu = -log(eps) / (2 * n * n);
   m = ceil(2 * n * 1 / PI * sqrt(-mu * log(eps) + (mu * n) * (mu * n) / 4));
   cudaMalloc((void **)&f, n * n * pnz * sizeof(float2));
