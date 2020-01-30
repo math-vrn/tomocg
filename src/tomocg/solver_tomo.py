@@ -90,7 +90,7 @@ class SolverTomo(radonusfft):
 
     def fwd_reg(self, u):
         """Forward operator for regularization (J)"""
-        res = np.zeros([3, *u.shape], dtype='complex64')
+        res = cp.get_array_module(u).zeros([3, *u.shape], dtype='complex64')
         res[0, :, :, :-1] = u[:, :, 1:]-u[:, :, :-1]
         res[1, :, :-1, :] = u[:, 1:, :]-u[:, :-1, :]
         res[2, :-1, :, :] = u[1:, :, :]-u[:-1, :, :]
@@ -98,7 +98,7 @@ class SolverTomo(radonusfft):
 
     def adj_reg(self, gr):
         """Adjoint operator for regularization (J*)"""
-        res = np.zeros(gr.shape[1:], dtype='complex64')
+        res = cp.get_array_module(gr).zeros(gr.shape[1:], dtype='complex64')
         res[:, :, 1:] = gr[0, :, :, 1:]-gr[0, :, :, :-1]
         res[:, :, 0] = gr[0, :, :, 0]
         res[:, 1:, :] += gr[1, :, 1:, :]-gr[1, :, :-1, :]
@@ -143,6 +143,39 @@ class SolverTomo(radonusfft):
                 print("%4d, %.3e, %.7e" %
                       (i, gamma, minf(Ru)))
         return u
+    
+    def cg_tomo_ext(self, xi0, u, titer, tau=0, xi1=None, dbg=False):
+        """CG solver for ||Ru-xi0||_2+tau||Ju-xi1||_2"""
+        if(tau == 0):  # no regularization
+            xi1 = cp.zeros([3, *u.shape], dtype='complex64')
+        # minimization functional
+
+        def minf(Ru, gu):
+            return cp.linalg.norm(Ru-xi0)**2+tau*cp.linalg.norm(gu-xi1)**2
+        for i in range(titer):
+            Ru = self.fwd_tomo(u)
+            gu = self.fwd_reg(u)
+            grad = (self.adj_tomo(Ru-xi0)/self.ntheta/self.n +\
+                tau*self.adj_reg(gu-xi1)/2)/max(tau,1)# normalized gradient
+            if i == 0:
+                d = -grad
+            else:
+                d = -grad+cp.linalg.norm(grad)**2 / \
+                    (cp.sum(cp.conj(d)*(grad-grad0))+1e-32)*d
+            # line search
+            #Rd = self.fwd_tomo(d)
+            #gd = self.fwd_reg(d)
+            gamma = 0.5#*self.line_search_ext(minf, 1, Ru, Rd, gu, gd)
+            grad0 = grad
+            # update step
+            u = u + gamma*d
+            # check convergence
+            if (dbg and cp.mod(i, 4) == 0):
+                print("%4d, %.3e, %.7e" %
+                      (i, gamma, minf(Ru, gu)))
+        return u        
+
+
   
     # Conjugate gradients tomography (by slices partitions)
     def cg_tomo_batch(self, xi0, init, titer):
@@ -157,6 +190,23 @@ class SolverTomo(radonusfft):
             u_gpu = self.cg_tomo(xi0_gpu, u_gpu, titer)
             u[ids] = u_gpu.get()
         return u
+
+    # Conjugate gradients tomography (by slices partitions)
+    def cg_tomo_batch_ext(self, xi0, u, titer, tau=0, xi1=None, dbg=False):
+        """CG solver for ||Ru-xi0||_2+tau||Ju-xi1||_2"""
+        print(xi1.shape)
+        print(xi0.shape)
+        for k in range(0, self.nz//self.pnz):
+            ids = np.arange(k*self.pnz, (k+1)*self.pnz)
+            u_gpu = cp.array(u[ids])
+            xi0_gpu = cp.array(xi0[:, ids])
+            xi1_gpu = cp.array(xi1[:, ids])
+            # reconstruct
+            u_gpu = self.cg_tomo_ext(xi0_gpu, u_gpu, titer,tau,xi1_gpu)
+            u[ids] = u_gpu.get()
+        return u
+
+
 
     # Conjugate gradients tomography (for all slices)
     def cg_tomo_batch2(self, xi0, u, titer):
@@ -186,7 +236,7 @@ class SolverTomo(radonusfft):
                       (i, gamma, minf(Ru)))
         return u
 
-    def cg_tomo_batch_ext(self, xi0, u, titer, tau=0, xi1=None, dbg=False):
+    def cg_tomo_batch_ext2(self, xi0, u, titer, tau=0, xi1=None, dbg=False):
         """CG solver for ||Ru-xi0||_2+tau||Ju-xi1||_2"""
         if(tau == 0):  # no regularization
             xi1 = np.zeros([3, *u.shape], dtype='complex64')
