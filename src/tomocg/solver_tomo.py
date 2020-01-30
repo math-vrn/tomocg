@@ -193,9 +193,7 @@ class SolverTomo(radonusfft):
 
     # Conjugate gradients tomography (by slices partitions)
     def cg_tomo_batch_ext(self, xi0, u, titer, tau=0, xi1=None, dbg=False):
-        """CG solver for ||Ru-xi0||_2+tau||Ju-xi1||_2"""
-        print(xi1.shape)
-        print(xi0.shape)
+        """CG solver for ||Ru-xi0||_2+tau||Ju-xi1||_2"""        
         for k in range(0, self.nz//self.pnz):
             ids = np.arange(k*self.pnz, (k+1)*self.pnz)
             u_gpu = cp.array(u[ids])
