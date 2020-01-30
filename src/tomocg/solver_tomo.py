@@ -54,6 +54,12 @@ class SolverTomo(radonusfft):
         while(minf(Ru)-minf(Ru+gamma*Rd) < 0):
             gamma *= 0.5
         return gamma
+
+    def line_search_ext(self, minf, gamma, Ru, Rd, gu, gd):
+        """Line search for the step sizes gamma"""
+        while(minf(Ru, gu)-minf(Ru+gamma*Rd, gu+gamma*gd) < 0):
+            gamma *= 0.5
+        return gamma        
     
     def fwd_tomo_batch(self, u):
         """Batch of Tomography transform (R)"""
@@ -81,6 +87,34 @@ class SolverTomo(radonusfft):
             # copy result to cpu
             res[ids] = res_gpu.get()
         return res
+
+    def fwd_reg(self, u):
+        """Forward operator for regularization (J)"""
+        res = np.zeros([3, *u.shape], dtype='complex64')
+        res[0, :, :, :-1] = u[:, :, 1:]-u[:, :, :-1]
+        res[1, :, :-1, :] = u[:, 1:, :]-u[:, :-1, :]
+        res[2, :-1, :, :] = u[1:, :, :]-u[:-1, :, :]
+        return res
+
+    def adj_reg(self, gr):
+        """Adjoint operator for regularization (J*)"""
+        res = np.zeros(gr.shape[1:], dtype='complex64')
+        res[:, :, 1:] = gr[0, :, :, 1:]-gr[0, :, :, :-1]
+        res[:, :, 0] = gr[0, :, :, 0]
+        res[:, 1:, :] += gr[1, :, 1:, :]-gr[1, :, :-1, :]
+        res[:, 0, :] += gr[1, :, 0, :]
+        res[1:, :, :] += gr[2, 1:, :, :]-gr[2, :-1, :, :]
+        res[0, :, :] += gr[2, 0, :, :]
+        return -res
+        
+    def solve_reg(self, u, mu, tau, alpha):
+        """Solution of the L1 problem by soft-thresholding"""
+        z = self.fwd_reg(u)+mu/tau
+        za = np.sqrt(np.real(np.sum(z*np.conj(z), 0)))
+        z[:, za <= alpha/tau] = 0
+        z[:, za > alpha/tau] -= alpha/tau * \
+            z[:, za > alpha/tau]/(za[za > alpha/tau])
+        return z        
 
     # Conjugate gradients tomography (for 1 slice partition)
     def cg_tomo(self, xi0, u, titer):
@@ -151,3 +185,34 @@ class SolverTomo(radonusfft):
                 print("%4d, %.3e, %.7e" %
                       (i, gamma, minf(Ru)))
         return u
+
+    def cg_tomo_batch_ext(self, xi0, u, titer, tau=0, xi1=None, dbg=False):
+        """CG solver for ||Ru-xi0||_2+tau||Ju-xi1||_2"""
+        if(tau == 0):  # no regularization
+            xi1 = np.zeros([3, *u.shape], dtype='complex64')
+        # minimization functional
+
+        def minf(Ru, gu):
+            return np.linalg.norm(Ru-xi0)**2+tau*np.linalg.norm(gu-xi1)**2
+        for i in range(titer):
+            Ru = self.fwd_tomo_batch(u)
+            gu = self.fwd_reg(u)
+            grad = (self.adj_tomo_batch(Ru-xi0)/self.ntheta/self.n +\
+                tau*self.adj_reg(gu-xi1)/2)/max(tau,1)# normalized gradient
+            if i == 0:
+                d = -grad
+            else:
+                d = -grad+np.linalg.norm(grad)**2 / \
+                    (np.sum(np.conj(d)*(grad-grad0))+1e-32)*d
+            # line search
+            Rd = self.fwd_tomo_batch(d)
+            gd = self.fwd_reg(d)
+            gamma = 0.5*self.line_search_ext(minf, 1, Ru, Rd, gu, gd)
+            grad0 = grad
+            # update step
+            u = u + gamma*d
+            # check convergence
+            if (dbg and np.mod(i, 4) == 0):
+                print("%4d, %.3e, %.7e" %
+                      (i, gamma, minf(Ru, gu)))
+        return u        
