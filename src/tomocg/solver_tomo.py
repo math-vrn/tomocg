@@ -19,13 +19,15 @@ class SolverTomo(radonusfft):
     pnz : int
         The number of slice partitions to process together
         simultaneously.
+    ngpus : int
+        Number of gpus        
     """
 
-    def __init__(self, theta, ntheta, nz, n, pnz, center):
+    def __init__(self, theta, ntheta, nz, n, pnz, center, ngpus):
         """Please see help(SolverTomo) for more info."""
         # create class for the tomo transform associated with first gpu
-        super().__init__(ntheta, pnz, n, center, theta.ctypes.data)
-        self.nz = nz
+        super().__init__(ntheta, pnz, n, center, theta.ctypes.data, ngpus)
+        self.nz = nz        
         
     def __enter__(self):
         """Return self at start of a with-block."""
@@ -37,14 +39,14 @@ class SolverTomo(radonusfft):
 
     def fwd_tomo(self, u):
         """Radon transform (R)"""
-        res = cp.zeros([self.ntheta, self.pnz, self.n], dtype='complex64')
+        res = cp.zeros([self.ntheta, self.ngpus*self.pnz, self.n], dtype='complex64')
         # C++ wrapper, send pointers to GPU arrays
         self.fwd(res.data.ptr, u.data.ptr)        
         return res
 
     def adj_tomo(self, data):
         """Adjoint Radon transform (R^*)"""
-        res = cp.zeros([self.pnz, self.n, self.n], dtype='complex64')
+        res = cp.zeros([self.ngpus*self.pnz, self.n, self.n], dtype='complex64')
         # C++ wrapper, send pointers to GPU arrays        
         self.adj(res.data.ptr, data.data.ptr)
         return res
@@ -64,8 +66,8 @@ class SolverTomo(radonusfft):
     def fwd_tomo_batch(self, u):
         """Batch of Tomography transform (R)"""
         res = np.zeros([self.ntheta, self.nz, self.n], dtype='complex64')
-        for k in range(0, self.nz//self.pnz):
-            ids = np.arange(k*self.pnz, (k+1)*self.pnz)
+        for k in range(0, self.nz//self.pnz//self.ngpus):
+            ids = np.arange(k*self.pnz*self.ngpus, (k+1)*self.pnz*self.ngpus)
             # copy data part to gpu
             u_gpu = cp.array(u[ids])
             # Radon transform
@@ -77,8 +79,8 @@ class SolverTomo(radonusfft):
     def adj_tomo_batch(self, data):
         """Batch of adjoint Tomography transform (R*)"""
         res = np.zeros([self.nz, self.n, self.n], dtype='complex64')
-        for k in range(0, self.nz//self.pnz):
-            ids = np.arange(k*self.pnz, (k+1)*self.pnz)
+        for k in range(0, self.nz//self.pnz//self.ngpus):
+            ids = np.arange(k*self.pnz*self.ngpus, (k+1)*self.pnz*self.ngpus)
             # copy data part to gpu
             data_gpu = cp.array(data[:, ids])
 
@@ -182,8 +184,8 @@ class SolverTomo(radonusfft):
         """CG solver for rho||Ru-xi0||_2 by z-slice partitions"""
         u = init.copy()
 
-        for k in range(0, self.nz//self.pnz):
-            ids = np.arange(k*self.pnz, (k+1)*self.pnz)
+        for k in range(0, self.nz//self.pnz//self.ngpus):
+            ids = np.arange(k*self.pnz*self.ngpus, (k+1)*self.pnz*self.ngpus)
             u_gpu = cp.array(u[ids])
             xi0_gpu = cp.array(xi0[:, ids])
             # reconstruct
