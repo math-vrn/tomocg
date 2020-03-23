@@ -14,9 +14,10 @@ public:
   size_t ntheta;
   size_t pnz;
   float center;
+  size_t ngpus;
 
   %mutable;
-  radonusfft(size_t ntheta, size_t pnz, size_t n, float center, size_t theta_);
+  radonusfft(size_t ntheta, size_t pnz, size_t n, float center, size_t theta_, size_t ngpus);
   ~radonusfft();
   void fwd(size_t g, size_t f);
   void adj(size_t f, size_t g);

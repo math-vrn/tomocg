@@ -10,22 +10,23 @@ import tomocg as pt
 if __name__ == "__main__":
 
     # Model parameters
-    n = 128  # object size n x,y
-    nz = 128  # object size in z
-    ntheta = 128  # number of angles (rotations)
+    n = 256  # object size n x,y
+    nz = 256  # object size in z
+    ntheta = 1024  # number of angles (rotations)
     center = n/2  # rotation center
     theta = np.linspace(0, np.pi, ntheta).astype('float32')  # angles
     niter = 64  # tomography iterations
     pnz = 32  # number of slice partitions for simultaneous processing in tomography
     # Load object
-    beta = dxchange.read_tiff('data/beta-chip-128.tiff')
-    delta = dxchange.read_tiff('data/delta-chip-128.tiff')
+    beta = dxchange.read_tiff('data/beta-chip-256.tiff')
+    delta = dxchange.read_tiff('data/delta-chip-256.tiff')
     u0 = delta+1j*beta
-
+    ngpus=4
     # Class gpu solver
-    with pt.SolverTomo(theta, ntheta, nz, n, pnz, center) as slv:
+    with pt.SolverTomo(theta, ntheta, nz, n, pnz, center, ngpus) as slv:
         # generate data
         data = slv.fwd_tomo_batch(u0)
+        dxchange.write_tiff_stack(data.real,'datar/r',overwrite=True)        
         # adjoint test
         u1 = slv.adj_tomo_batch(data)
 
