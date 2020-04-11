@@ -21,7 +21,7 @@ if __name__ == "__main__":
     beta = dxchange.read_tiff('data/beta-chip-256.tiff')
     delta = dxchange.read_tiff('data/delta-chip-256.tiff')
     u0 = delta+1j*beta
-    ngpus=4
+    ngpus=1
     # Class gpu solver
     with pt.SolverTomo(theta, ntheta, nz, n, pnz, center, ngpus) as slv:
         # generate data
@@ -34,4 +34,4 @@ if __name__ == "__main__":
         t2 = np.sum(u0*np.conj(u1))
         print(f"Adjoint test: {t1.real:06f}{t1.imag:+06f}j "
               f"=? {t2.real:06f}{t2.imag:+06f}j")
-        np.testing.assert_allclose(t1, t2, atol=1e-6)
+        np.testing.assert_allclose(t1, t2, atol=1e-4)

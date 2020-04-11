@@ -1,7 +1,7 @@
 #define PI 3.1415926535
 
 // Divide by phi
-void __global__ divphi(float2 *g, float2 *f, float mu, int N, int Nz, dir direction) {
+void __global__ divphi(float2 *g, float2 *f, float mu, int N, int Nz, int m, dir direction) {
   int tx = blockDim.x * blockIdx.x + threadIdx.x;
   int ty = blockDim.y * blockIdx.y + threadIdx.y;
   int tz = blockDim.z * blockIdx.z + threadIdx.z;
@@ -17,9 +17,9 @@ void __global__ divphi(float2 *g, float2 *f, float mu, int N, int Nz, dir direct
     + tz * N * N
   );
   int g_ind = (
-    + (tx + N / 2)
-    + (ty + N / 2) * 2 * N
-    + tz * 4 * N * N
+    + (tx + N / 2 + m)
+    + (ty + N / 2 + m) * (2 * N + 2 * m)
+    + tz * (2 * N + 2 * m) * (2 * N + 2 * m)
   );
   if (direction == TOMO_FWD){
     g[g_ind].x = f[f_ind].x / phi / (4 * N * N);

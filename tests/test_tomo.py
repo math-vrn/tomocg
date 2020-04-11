@@ -18,7 +18,7 @@ if __name__ == "__main__":
     delta = dxchange.read_tiff('data/delta-chip-256.tiff')
     print(delta.shape)
     u0 = delta+1j*beta
-    ngpus = 4
+    ngpus = 1
     # shift
     with pt.SolverTomo(theta, ntheta, nz, n, pnz, center, ngpus) as slv:
         # generate data

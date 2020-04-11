@@ -25,12 +25,10 @@ class radonusfft {
   float **x;
   float **y;
 
-  float2 **fde;
   float2 **fdee;
 
-  cufftHandle *plan2dfwd;
-  cufftHandle *plan2dadj;
-
+  cufftHandle *plan2d;
+  
   cufftHandle *plan1d;
   float2 **shiftfwd;
   float2 **shiftadj;

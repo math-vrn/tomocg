@@ -209,3 +209,6 @@ dkms.conf
 *radonusfft.py
 *ptychofft.py
 *_wrap.cpp
+datar/
+rec/
+dec/
