@@ -8,7 +8,7 @@
 radonusfft::radonusfft(size_t ntheta, size_t pnz, size_t n, float center,
                        size_t theta_, size_t ngpus)
     : ntheta(ntheta), pnz(pnz), n(n), center(center), ngpus(ngpus) {
-  float eps = 1e-3;
+  float eps = 1e-2;
   mu = -log(eps) / (2 * n * n);
   m = ceil(2 * n * 1 / PI * sqrt(-mu * log(eps) + (mu * n) * (mu * n) / 4));
   f = new float2*[ngpus];
@@ -59,8 +59,14 @@ radonusfft::radonusfft(size_t ntheta, size_t pnz, size_t n, float center,
     // compute shifts with respect to the rotation center
     takeshift <<<ceil(n / 1024.0), 1024>>> (shiftfwd[igpu], -(center - n / 2.0), n);
     takeshift <<<ceil(n / 1024.0), 1024>>> (shiftadj[igpu], (center - n / 2.0), n);
-    
+
+
   }
+
+  //back tp 0
+  cudaSetDevice(0);
+
+
   BS2d = dim3(32, 32);
   BS3d = dim3(32, 32, 1);
 
@@ -100,17 +106,15 @@ void radonusfft::free() {
     cudaFree(x);
     cudaFree(y);
     cudaFree(shiftfwd);
-    cudaFree(shiftadj);
+    cudaFree(shiftadj);      
   }
 }
 
-void radonusfft::fwd(size_t g_, size_t f_) {
-  #pragma omp parallel for
-  for(int igpu=0;igpu<ngpus;igpu++)
-  {
+void radonusfft::fwd(size_t g_, size_t f_, size_t igpu) {
+
     cudaSetDevice(igpu);
     float2* f0 = (float2 *)f_;
-    cudaMemcpy(f[igpu], &f0[igpu*pnz*n*n], n * n * pnz * sizeof(float2), cudaMemcpyDefault);      
+    cudaMemcpy(f[igpu], f0, n * n * pnz * sizeof(float2), cudaMemcpyDefault);      
     cudaMemset(fdee[igpu], 0, (2 * n + 2 * m) * (2 * n + 2 * m) * pnz * sizeof(float2));
 
     //circ <<<GS3d0, BS3d>>> (f, 1.0f / n, n, pnz);
@@ -133,18 +137,14 @@ void radonusfft::fwd(size_t g_, size_t f_) {
 
     float2* g0 = (float2 *)g_;
     for (int i=0;i<ntheta;i++)    
-      cudaMemcpy(&g0[i*n*ngpus*pnz+igpu*pnz*n], &g[igpu][i*n*pnz], n * pnz * sizeof(float2), cudaMemcpyDefault);
-  }
+      cudaMemcpy(&g0[i*n*pnz], &g[igpu][i*n*pnz], n * pnz * sizeof(float2), cudaMemcpyDefault);  
 }
 
-void radonusfft::adj(size_t f_, size_t g_) {
-  #pragma omp parallel for
-  for(int igpu=0;igpu<ngpus;igpu++)
-  {    
+void radonusfft::adj(size_t f_, size_t g_, size_t igpu) {
     cudaSetDevice(igpu);
     float2* g0 = (float2 *)g_;
     for (int i=0;i<ntheta;i++)    
-      cudaMemcpy(&g[igpu][i*n*pnz],&g0[i*n*ngpus*pnz+igpu*pnz*n], n * pnz * sizeof(float2), cudaMemcpyDefault);
+      cudaMemcpy(&g[igpu][i*n*pnz],&g0[i*n*pnz], n * pnz * sizeof(float2), cudaMemcpyDefault);
     cudaMemset(fdee[igpu], 0, (2 * n + 2 * m) * (2 * n + 2 * m) * pnz * sizeof(float2));
 
     takexy <<<GS2d0, BS2d>>> (x[igpu], y[igpu], theta[igpu], n, ntheta);
@@ -167,7 +167,7 @@ void radonusfft::adj(size_t f_, size_t g_) {
     divphi <<<GS3d0, BS3d>>> (fdee[igpu], f[igpu], mu, n, pnz, m, TOMO_ADJ);
     //circ <<<GS3d0, BS3d>>> (f, 1.0f / n, n, pnz);
     float2* f0 = (float2 *)f_;
-    cudaMemcpy(&f0[igpu*n*n*pnz], f[igpu], n * n * pnz * sizeof(float2),
+    cudaMemcpy(f0, f[igpu], n * n * pnz * sizeof(float2),
               cudaMemcpyDefault);
-  }
+  //}
 }
