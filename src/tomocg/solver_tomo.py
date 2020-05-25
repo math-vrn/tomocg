@@ -97,7 +97,7 @@ class SolverTomo(radonusfft):
 
     def fwd_reg(self, u):
         """Forward operator for regularization (J)"""
-        res = cp.get_array_module(u).zeros([3, *u.shape], dtype='complex64')
+        res = cp.get_array_module(u).zeros([3, *u.shape], dtype='float32')
         res[0, :, :, :-1] = u[:, :, 1:]-u[:, :, :-1]
         res[1, :, :-1, :] = u[:, 1:, :]-u[:, :-1, :]
         res[2, :-1, :, :] = u[1:, :, :]-u[:-1, :, :]
@@ -105,7 +105,7 @@ class SolverTomo(radonusfft):
 
     def adj_reg(self, gr):
         """Adjoint operator for regularization (J*)"""
-        res = cp.get_array_module(gr).zeros(gr.shape[1:], dtype='complex64')
+        res = cp.get_array_module(gr).zeros(gr.shape[1:], dtype='float32')
         res[:, :, 1:] = gr[0, :, :, 1:]-gr[0, :, :, :-1]
         res[:, :, 0] = gr[0, :, :, 0]
         res[:, 1:, :] += gr[1, :, 1:, :]-gr[1, :, :-1, :]
@@ -140,8 +140,8 @@ class SolverTomo(radonusfft):
                 d = -grad+cp.linalg.norm(grad)**2 / \
                     (cp.sum(cp.conj(d)*(grad-grad0))+1e-32)*d
             # line search
-            Rd = self.fwd_tomo(d,gpu)
-            gamma = 0.5*self.line_search(minf, 1, Ru, Rd)
+           # Rd = self.fwd_tomo(d,gpu)
+            gamma = 0.5#*self.line_search(minf, 1, Ru, Rd)
             grad0 = grad
             # update step
             u = u + gamma*d
@@ -195,11 +195,86 @@ class SolverTomo(radonusfft):
         return u
 
 
+ # Conjugate gradients tomography (for 1 slice partition)
+    def cg_tomo_reg(self, xi0, u, titer, tau, xi1,gpu=0, dbg=False):
+        """CG solver for ||Ru-xi0||_2"""
+        # minimization functional
+        def minf(Ru,gu):
+            f = cp.linalg.norm(Ru-xi0)**2+tau*cp.linalg.norm(gu-xi1)**2
+            return f
+        for i in range(titer):
+            Ru = self.fwd_tomo(u,gpu)            
+            gu = self.fwd_reg(u)   
+            grad = (self.adj_tomo(Ru-xi0,gpu) / \
+                (self.ntheta * self.n/2)+tau*self.adj_reg(gu-xi1))/2/max(tau,1)# normalized gradient
+            if i == 0:
+                d = -grad
+            else:
+                d = -grad+cp.linalg.norm(grad)**2 / \
+                    (cp.sum(cp.conj(d)*(grad-grad0))+1e-32)*d
+            # line search
+            #Rd = self.fwd_tomo(d,gpu)
+            #gd = self.fwd_reg(d)
+            gamma = 0.5#*self.line_search_ext(minf, 1, Ru, Rd,gu,gd)
+            grad0 = grad
+            # update step
+            u = u + gamma*d
+            # check convergence
+            if (dbg):
+                print("%4d, %.3e, %.7e" %
+                      (i, gamma, minf(Ru,gu)))
+        return u
+    
+     
+
+    def cg_tomo_reg_multi_gpu(self,xi0,u,titer,tau,xi1,lock,ids):
+
+        global BUSYGPUS
+        lock.acquire()  # will block if lock is already held
+        for k in range(self.ngpus):
+            if BUSYGPUS[k] == 0:
+                BUSYGPUS[k] = 1
+                gpu = k
+                break
+        lock.release()
+
+        cp.cuda.Device(gpu).use()
+        u_gpu = cp.array(u[ids])
+        xi0_gpu = cp.array(xi0[:, ids])
+        xi1_gpu = cp.array(xi1[:, ids])
+        # reconstruct
+        u_gpu = self.cg_tomo_reg(xi0_gpu, u_gpu, titer, tau, xi1_gpu, gpu)
+        u[ids] = u_gpu.get()
+
+        BUSYGPUS[gpu] = 0
+
+        return u[ids]
+  
+    # Conjugate gradients tomography (by slices partitions)
+    def cg_tomo_reg_batch(self, xi0, init, titer, tau, xi1, dbg=False):
+        """CG solver for ||Ru-xi0||_2+tau||Ju-xi1||_2 by z-slice partitions"""
+        u = init.copy()
+        ids_list = [None]*int(np.ceil(self.nz/float(self.pnz)))
+        for k in range(0, len(ids_list)):
+            ids_list[k] = range(k*self.pnz, min(self.nz, (k+1)*self.pnz))
+        
+        lock = threading.Lock()
+        global BUSYGPUS
+        BUSYGPUS = np.zeros(self.ngpus)
+        with cf.ThreadPoolExecutor(self.ngpus) as e:
+            shift = 0
+            for ui in e.map(partial(self.cg_tomo_reg_multi_gpu, xi0, u, titer, tau, xi1, lock), ids_list):
+                u[np.arange(0, ui.shape[0])+shift] = ui
+                shift += ui.shape[0]
+        cp.cuda.Device(0).use()        
+        return u
+
+
 
     # # Conjugate gradients tomography (by slices partitions)
     # def cg_tomo_batch_ext(self, xi0, u, titer, tau=0, xi1=None, dbg=False):
     #     """CG solver for ||Ru-xi0||_2+tau||Ju-xi1||_2"""
-    #     for k in range(0, self.nz//self.pnz):
+    #     for k in range(0, self.nz//self.pnz):d
     #         ids = np.arange(k*self.pnz, (k+1)*self.pnz)
     #         u_gpu = cp.array(u[ids])
     #         xi0_gpu = cp.array(xi0[:, ids])
