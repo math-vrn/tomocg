@@ -46,7 +46,7 @@ class SolverTomo(radonusfft):
         u0 = u.astype('complex64')
         # C++ wrapper, send pointers to GPU arrays
         self.fwd(res.data.ptr, u0.data.ptr, gpu)        
-        return res.real
+        return res
 
     def adj_tomo(self, data, gpu):
         """Adjoint Radon transform (R^*)"""
@@ -54,7 +54,7 @@ class SolverTomo(radonusfft):
         data0 = data.astype('complex64')
         # C++ wrapper, send pointers to GPU arrays        
         self.adj(res.data.ptr, data0.data.ptr, gpu)
-        return res.real
+        return res
 
     def line_search(self, minf, gamma, Ru, Rd):
         """Line search for the step sizes gamma"""
@@ -70,7 +70,7 @@ class SolverTomo(radonusfft):
     
     def fwd_tomo_batch(self, u):
         """Batch of Tomography transform (R)"""
-        res = np.zeros([self.ntheta, self.nz, self.n], dtype='float32')
+        res = np.zeros([self.ntheta, self.nz, self.n], dtype='complex64')
         for k in range(0, self.nz//self.pnz):
             ids = np.arange(k*self.pnz, (k+1)*self.pnz)
             # copy data part to gpu
@@ -97,7 +97,7 @@ class SolverTomo(radonusfft):
 
     def fwd_reg(self, u):
         """Forward operator for regularization (J)"""
-        res = cp.get_array_module(u).zeros([3, *u.shape], dtype='float32')
+        res = cp.get_array_module(u).zeros([3, *u.shape], dtype='complex64')
         res[0, :, :, :-1] = u[:, :, 1:]-u[:, :, :-1]
         res[1, :, :-1, :] = u[:, 1:, :]-u[:, :-1, :]
         res[2, :-1, :, :] = u[1:, :, :]-u[:-1, :, :]
@@ -105,7 +105,7 @@ class SolverTomo(radonusfft):
 
     def adj_reg(self, gr):
         """Adjoint operator for regularization (J*)"""
-        res = cp.get_array_module(gr).zeros(gr.shape[1:], dtype='float32')
+        res = cp.get_array_module(gr).zeros(gr.shape[1:], dtype='complex64')
         res[:, :, 1:] = gr[0, :, :, 1:]-gr[0, :, :, :-1]
         res[:, :, 0] = gr[0, :, :, 0]
         res[:, 1:, :] += gr[1, :, 1:, :]-gr[1, :, :-1, :]

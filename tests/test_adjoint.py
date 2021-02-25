@@ -10,7 +10,7 @@ import tomocg as pt
 if __name__ == "__main__":
 
     # Model parameters
-    n = 256  # object size n x,y
+    n = 256  # object size in x,y
     nz = 256  # object size in z
     ntheta = 1024  # number of angles (rotations)
     center = n/2  # rotation center
@@ -27,6 +27,7 @@ if __name__ == "__main__":
         # generate data
         data = slv.fwd_tomo_batch(u0)
         dxchange.write_tiff_stack(data.real,'datar/r',overwrite=True)        
+        dxchange.write_tiff_stack(data.imag,'datar/i',overwrite=True)        
         # adjoint test
         u1 = slv.adj_tomo_batch(data)
 
@@ -34,4 +35,4 @@ if __name__ == "__main__":
         t2 = np.sum(u0*np.conj(u1))
         print(f"Adjoint test: {t1.real:06f}{t1.imag:+06f}j "
               f"=? {t2.real:06f}{t2.imag:+06f}j")
-        np.testing.assert_allclose(t1, t2, atol=1e-4)
+        np.testing.assert_allclose(t1, t2, atol=1e-3)

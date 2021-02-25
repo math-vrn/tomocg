@@ -1,7 +1,13 @@
 # tomocg
 Tomography solver with the Conjugate gradient method
 
+
+## Install dependencies
+
+conda install -c conda-forge scikit-build swig cupy dxchange
+
 ## Installation from source
+
 python setup.py install
 
 ## Tests
